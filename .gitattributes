@@ -1,0 +1,2 @@
+# Normalize text files to LF in the repository (avoids CRLF noise from Windows contributors)
+* text=auto
