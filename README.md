@@ -68,7 +68,7 @@ claude mcp list                                # 应显示 ✔ Connected
 
 ```bash
 # 示例：克隆到用户 skills 目录
-git clone <repo-url> ~/.claude/skills/collaborating-with-claude
+git clone https://github.com/moyunliuyin/collaborating-with-claude.git ~/.claude/skills/collaborating-with-claude
 ```
 
 无需 `pip install`——脚本只用 Python 标准库。
