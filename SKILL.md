@@ -5,10 +5,10 @@ description: One-shot multi-agent orchestration over the `claude -p` bridge — 
 
 # collaborating-with-claude
 
-Native `Workflow`/`Agent`/`Task` sub-agents open a *new* conversation that cold-starts
-on the cc-switch proxy; their retry budget (~195s) is shorter than the proxy warm-up,
-so they **always 429-die**. This skill routes the same orchestration through
-independent `claude -p` processes that piggyback the main session's hot connection.
+Native `Workflow`/`Agent`/`Task` sub-agents take a request path the cc-switch + anyrouter
+relay 429's for **opus** (haiku is fine), and their retry budget (~195s) can't outlast it —
+so native **opus** sub-agents reliably die. This skill routes the same orchestration through
+independent `claude -p` processes, whose request path the relay does NOT 429 for opus.
 
 ## When to use (instead of native Workflow)
 
@@ -60,7 +60,7 @@ stdout is aggregated JSON: `{mode, cap, ok_count, total, results:[{label,success
 - **opus / haiku only** for `model` (verified hot on **anyrouter** via cc-switch). `sonnet` is cold → fail-fast 429. Your relay may differ — override the cold set with `cold_models` (empty disables the fail-fast). Omit `model` to use the relay default.
 - **Background + no timeout** — a cold bridge attempt can run ~210s before the retry backoff clears the proxy warm-up.
 - `mode:"agent"` runs `agents[0]` only; `parallel` is a barrier (failed agent → `success:false`, never crashes the batch); `pipeline` has no inter-stage barrier (a failed stage drops that item).
-- Costs real tokens per sub-agent. Haiku is ~$0.002/agent; scale the fan-out to the task.
+- Costs real tokens per sub-agent. Haiku ~$0.013/agent, opus ~$0.078/agent (incl. ~10–12k `--bare` cache creation); scale the fan-out to the task.
 - Underlying primitives live in `scripts/claude_orchestrator.py` (`agent`/`parallel`/`pipeline`); for control flow a JSON spec can't express (loops, dedup, conditional fan-out), import that module in a hand-written driver instead.
 
 ## Self-test
