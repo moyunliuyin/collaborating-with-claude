@@ -50,7 +50,7 @@ claude mcp list                                # 应显示 ✔ Connected
 
 - **haiku**：两条路都能用——这种情况你甚至不需要本工具，原生 `Workflow` 跑 haiku 子 agent 就行。
 - **opus**：原生子 agent **必 429 死**；换成本工具的独立 `claude -p` 进程就**完全可用**（low→max 思考、并发到 8 实测全过）。**这是本工具不可替代的地方。**
-- **sonnet**：这个 anyrouter 渠道把 sonnet 当冷的，原生和 `claude -p` 都救不了（重试 2×210s 仍 429）——避开，用 haiku/opus。
+- **sonnet**：这个 anyrouter 渠道把 sonnet 当冷的，原生和 `claude -p` 都救不了——手动拉满重试（实测约两轮 ~210s 退避）仍 `429`。所以本工具默认把 sonnet 列入 `--cold-models`，**首个 429 即快速失败**、不白等那 ~210s。避开它，用 haiku/opus；若你的渠道里 sonnet 反而是热的，把它从 `--cold-models` 移除（或留空）即可。
 
 > **机理**：opus 原生死，与模型本身、`[1m]` 路由、请求大小、session 都无关（已逐一实验排除——`claude -p` 带 `[1m]` 同 ID、灌 66k 大请求、用全新随机 session，opus 照样活）。唯一变量是 **Claude Code 原生子 agent 的请求路径**在 anyrouter 上对 opus 触发 429，而独立 `claude -p` 进程的请求路径不触发。精确到哪个请求字段没抓包确证，但结论**可操作且稳定**：opus 子 agent 走 `claude -p` 就能用。
 >
@@ -85,7 +85,9 @@ git clone https://github.com/moyunliuyin/collaborating-with-claude.git ~/.claude
 
 ## 快速自测
 
-确认桥与代理都通（期望 `ok_count=2`）：
+跑之前先在主会话里把代理戳热（发几个 `hi` 直到主会话正常应答，见「遇到问题」）。
+
+**① 验通路（便宜，haiku）** —— 确认桥与代理都通，期望 `ok_count=2`：
 
 ```bash
 python ~/.claude/skills/collaborating-with-claude/scripts/orchestrate.py \
@@ -94,7 +96,15 @@ python ~/.claude/skills/collaborating-with-claude/scripts/orchestrate.py \
                        {"prompt":"Reply one word: beta"}]}'
 ```
 
-跑之前先在主会话里把代理戳热（发几个 `hi` 直到主会话正常应答，见「遇到问题」）。
+**② 验核心价值（opus）** —— 这才是本工具的意义：同样一句话交给 opus 子 agent，**原生必 429 死、走本工具能活**。把 `model` 换成 `opus` 即可（单 agent ~$0.078）：
+
+```bash
+python ~/.claude/skills/collaborating-with-claude/scripts/orchestrate.py \
+  --inline '{"mode":"agent","cd":".","model":"opus",
+             "agents":[{"prompt":"Reply with exactly one token: ALIVE-OPUS"}]}'
+```
+
+期望 `ok_count=1`、`agent_messages` 为 `ALIVE-OPUS`，约 20–60s 返回（冷启动可能到 ~210s）。想**亲眼看对照**：在主会话里用原生 `Workflow` / `Agent` 跑同一句 opus，它会熬 ~200s 后吐 `429 Service Unavailable`——这正是本工具存在的理由。
 
 ---
 
@@ -212,3 +222,9 @@ stdout 是聚合后的 JSON：
 本工具是 **[cc-switch](https://github.com/farion1231/cc-switch)**（官网 [ccswitch.io](https://ccswitch.io)）用户的配套工具——排查思路、anyrouter 接入冷启动行为均基于 anyrouter + cc-switch 实测。
 
 cc-switch 支持「从 GitHub 仓库一键安装 Skill」，本工具可直接通过它分发、安装。
+
+---
+
+## License
+
+MIT © moyunliuyin —— 见 [LICENSE](LICENSE)。

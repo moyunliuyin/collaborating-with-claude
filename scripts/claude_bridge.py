@@ -2,10 +2,14 @@
 Claude Bridge — wraps `claude -p` as a sub-agent bridge with a JSON interface,
 mirroring codex_bridge.py's {success, SESSION_ID, agent_messages} contract.
 
-Why this exists: native Agent/Workflow sub-agents die on the cc-switch proxy
-cold-start 429 (their retry budget ~195s < proxy warm-up). An independent
-`claude -p` process survives because (a) it shrugs onto the main session's hot
-connection for hot models, and (b) retry window is ours to widen past 195s.
+Why this exists: on the cc-switch + anyrouter relay, Claude Code's NATIVE
+sub-agent request path gets 429'd for opus (haiku is fine); the native retry
+budget (~195s) can't outlast it, so native opus sub-agents reliably die. An
+independent `claude -p` process takes a different request path the relay does
+NOT 429 for opus — verified by elimination (bridge opus survives with a fresh
+random session, [1m] routing, and 66k requests) — and its retry window is ours
+to widen past 195s. A relay-side path×model quirk: not a main-session warm-up
+issue, and absent on official direct connections.
 """
 from __future__ import annotations
 
