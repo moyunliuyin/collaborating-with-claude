@@ -29,6 +29,14 @@ claude mcp list                                # 应显示 ✔ Connected
 
 排错锚点：以后 npm / npx / MCP 报 `EPERM` 或 `Failed to connect`，先查 `npm config get cache` 是否指向可写位置。
 
+### `/resume` 被一堆 `claude -p` 子 agent 会话刷屏
+
+每个子 agent 都是一次独立 `claude -p`，会在「**子进程 CWD** 派生的项目目录」下持久化一个 session 文件。若从你的主目录发起编排，这些一次性子 agent 会话就全堆进主项目的 `/resume` 列表，且不会自动清理。
+
+本工具默认把子 agent 的 CWD 钉到专用目录 `~/.claude/.bridge-cwd`，让这些 session 落进一个**没有任何交互 `/resume` 会去读**的隔离 `projects/<hash>` 文件夹；子 agent 仍通过 `--add-dir`（spec 里的 `cd`）访问目标项目，prompt 用绝对路径即可。要换位置：bridge 传 `--session-cwd <dir>`，或 spec 里设 `"session_cwd":"<dir>"`（须是稳定目录，否则 `--resume` 找不回旧 session）。
+
+> 注：你**自己**在主会话里发的 `hi` / `1` 预热戳（见上）是**交互式真会话**，不归本工具管，会照常出现在 `/resume`——那是另一回事。
+
 ---
 
 ## 它解决什么问题
@@ -113,6 +121,7 @@ stdout 是聚合后的 JSON：
   "cold_models":"sonnet",          // 可选：你中转上的「冷模型」集（快速失败）；留空禁用
   "block_tool":"",                 // 可选：防递归的 --disallowedTools 模式
   "effort":"",                     // 可选：思考强度 low/medium/high/xhigh/max；留空=CLI 默认
+  "session_cwd":"",                // 可选：子 agent 会话存储用的专用 CWD（隔离 /resume）；留空=~/.claude/.bridge-cwd
   "retries": 3, "timeout": 240,    // 可选：默认 agent 选项
 
   // mode = agent | parallel：

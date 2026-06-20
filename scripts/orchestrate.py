@@ -36,7 +36,7 @@ import claude_orchestrator as co  # noqa: E402
 # keys agent()/_Args accept; per-node overrides spec-level defaults
 AGENT_OPT_KEYS = ("model", "mcp", "schema", "session_id", "fallback_model",
                   "max_budget_usd", "retries", "retry_base_delay", "timeout",
-                  "cold_models", "block_tool", "effort")
+                  "cold_models", "block_tool", "effort", "session_cwd")
 
 
 def _merge_opts(spec: dict, node: dict) -> dict:

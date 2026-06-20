@@ -25,12 +25,12 @@ class _Args:
     __slots__ = ("PROMPT", "cd", "model", "mcp", "schema", "SESSION_ID",
                  "fallback_model", "max_budget_usd", "retries",
                  "retry_base_delay", "timeout", "return_all_messages",
-                 "cold_models", "block_tool", "effort")
+                 "cold_models", "block_tool", "effort", "session_cwd")
 
     def __init__(self, prompt, cd, *, model="", mcp="", schema="", session_id="",
                  fallback_model="", max_budget_usd="", retries=3,
                  retry_base_delay=30.0, timeout=240, return_all_messages=False,
-                 cold_models=DEFAULT_COLD_MODELS, block_tool="", effort=""):
+                 cold_models=DEFAULT_COLD_MODELS, block_tool="", effort="", session_cwd=""):
         self.PROMPT = prompt
         self.cd = cd
         self.model = model
@@ -46,6 +46,7 @@ class _Args:
         self.cold_models = cold_models
         self.block_tool = block_tool
         self.effort = effort
+        self.session_cwd = session_cwd
 
 
 def agent(prompt: str, cd: str, **opts) -> dict:

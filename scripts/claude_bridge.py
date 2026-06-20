@@ -138,6 +138,19 @@ def run_claude(args) -> dict:
     env.setdefault("ANTHROPIC_API_KEY", "PROXY_MANAGED")  # --bare needs a key placeholder; anyrouter/cc-switch injects the real token via ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN
     exe = _resolve_executable("claude", env)
 
+    # Isolate session storage: `claude -p` persists each session under a project dir
+    # derived from the SUBPROCESS CWD (empirically verified: not --add-dir). Run from
+    # your home dir, every sub-agent session piles into the main project's /resume list
+    # and is never cleaned up. Pin cwd to a dedicated stable dir so sessions land in an
+    # isolated projects/<hash> folder no interactive /resume reads; the sub-agent still
+    # reaches the target via --add-dir args.cd (cd was never the cwd, so prompts using
+    # absolute paths are unaffected). Stable (not a tempfile) so --resume can find it.
+    session_cwd = args.session_cwd or str(Path.home() / ".claude" / ".bridge-cwd")
+    try:
+        os.makedirs(session_cwd, exist_ok=True)
+    except OSError:
+        session_cwd = None  # fall back to inherited cwd if it can't be created
+
     cold_set = {m.strip() for m in (args.cold_models or "").split(",") if m.strip()}
     cold = args.model in cold_set
     last_err = ""
@@ -150,6 +163,7 @@ def run_claude(args) -> dict:
                 cmd, env=env, capture_output=True, text=True,
                 encoding="utf-8", errors="replace",
                 timeout=args.timeout, input=args.PROMPT,  # PROMPT via stdin: avoids ~32k argv limit (WinError 206)
+                cwd=session_cwd,  # isolate session storage out of the main project's /resume picker
             )
         except subprocess.TimeoutExpired:
             last_err = f"timeout after {args.timeout}s (attempt {attempt + 1})"
@@ -198,6 +212,8 @@ def main():
                    help="Comma-list of models that cold-start→429 on your relay (fail-fast). Default 'sonnet' from anyrouter; empty disables.")
     p.add_argument("--block-tool", dest="block_tool", default="",
                    help="--disallowedTools pattern for anti-recursion, e.g. 'Bash(*your-wrapper*)'. Empty = no block.")
+    p.add_argument("--session-cwd", dest="session_cwd", default="",
+                   help="Stable dir used as the sub-agent's CWD so its session won't pollute your real projects' /resume picker. Empty=~/.claude/.bridge-cwd.")
     p.add_argument("--retries", type=int, default=3, help="Retries after the first attempt (N → N+1 total; default 3 → ~210s backoff > 195s).")
     p.add_argument("--retry-base-delay", dest="retry_base_delay", type=float, default=30.0)
     p.add_argument("--timeout", type=int, default=240, help="Per-attempt subprocess timeout (seconds); covers ~213s cold-start.")
