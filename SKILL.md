@@ -1,16 +1,21 @@
 ---
 name: collaborating-with-claude
-description: One-shot multi-agent orchestration over the `claude -p` bridge — replaces the native Workflow/Agent/Task tools, which 429-die on the cc-switch proxy cold-start. Use whenever you need fan-out (parallel sub-agents), a multi-stage pipeline, or a single isolated sub-agent — and DO NOT call the native Workflow tool on this machine.
+description: One-shot multi-agent orchestration over the `claude -p` bridge. FALLBACK since 2026-07-02 — native Workflow/Agent on the default (main-session-inherited) model verified alive again, prefer native. Use this bridge only for sub-agents on a NON-main-session model (native path 429s those; bridge hot-matrix is 2026-06-17 data — probe one agent before fanning out).
 ---
 
 # collaborating-with-claude
 
-Native `Workflow`/`Agent`/`Task` sub-agents take a request path the cc-switch + anyrouter
-relay 429's for **opus** (haiku is fine), and their retry budget (~195s) can't outlast it —
-so native **opus** sub-agents reliably die. This skill routes the same orchestration through
-independent `claude -p` processes, whose request path the relay does NOT 429 for opus.
+**Status 2026-07-02: FALLBACK, not default.** The relay's per-model availability drifts over
+time. Current measurements: native `Workflow`/`Agent` on the default model (inherited from
+the main session, currently fable) are alive again — **prefer native**. Native haiku/sonnet
+429-die even after warm-up retries (~250s each); opus untested natively. This skill routes
+orchestration through independent `claude -p` processes for models the native path 429s —
+but its own hot-matrix (opus/haiku alive) is 2026-06-17 data, so probe a single agent
+before fanning out.
 
-## When to use (instead of native Workflow)
+## When to use (fallback — prefer native Workflow/Agent when alive)
+
+Only when the sub-agents must run on a model the native path currently 429s:
 
 - Ultracode is on and the task wants multi-agent decomposition.
 - You need genuine parallelism (fan-out N sub-agents at once).
